@@ -13,12 +13,17 @@ def generate_iv():
     return Random.new().read(AES.block_size)
 
 
+def encrypt_data_with_head(key, raw_data: bytes):
+    data_len = len(raw_data)
+    iv, enc_data = encrypt_data(key, raw_data)
+    return _HEAD_MARKER + data_len.to_bytes(_HEAD_FILE_SIZE_BYTE_SIZE, byteorder='big') + iv + enc_data
+
+
 def encrypt_data(key, raw_data: bytes):
     iv = generate_iv()
     cipher = AES.new(key, AES.MODE_CBC, iv)
-    data_len = len(raw_data)
-    enc_data = cipher.encrypt(pad(raw_data, AES.block_size))
-    return _HEAD_MARKER + data_len.to_bytes(_HEAD_FILE_SIZE_BYTE_SIZE, byteorder='big') + iv + enc_data
+    enc_data = cipher.encrypt(pad(raw_data, AES.block_size, style='pkcs7'))
+    return iv, enc_data
 
 
 def decrypt_data(key, enc_data: bytes):
@@ -34,6 +39,12 @@ def decrypt_data(key, enc_data: bytes):
     cipher = AES.new(key, AES.MODE_CBC, iv)
     raw_data = cipher.decrypt(enc_data[_HEAD_LENGTH:])
     return raw_data[:data_len]
+
+
+def decrypt_data1(key, iv, length, enc_data: bytes):
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    raw_data = cipher.decrypt(enc_data)
+    return raw_data[:length]
 
 
 def is_encrypt_data(enc_data: bytes):
