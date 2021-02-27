@@ -2,10 +2,11 @@ from typing import List
 import zipfile
 import os
 import time
+import hashlib
 from io import BytesIO
 
-from keymanager.encryptor import encrypt_data, pad_key, is_encrypt_data, decrypt_data
-from keymanager.utils import write_file, read_file, read_header
+from keymanager.encryptor import encrypt_data_with_head, pad_key, is_encrypt_data, decrypt_data
+from keymanager.utils import write_file, read_file, read_header, get_md5_data_dir
 
 
 class Key:
@@ -15,6 +16,7 @@ class Key:
         self.name: str = None
         self._key: bytes = None
         self.path: str = None
+        self.md5: bytes = None
         self._update_last_access()
 
     def _update_last_access(self):
@@ -55,6 +57,8 @@ class Key:
         input_raw_bytes = read_file(self.path)
         input_bytes = input_raw_bytes
 
+        self.md5 = hashlib.md5(input_bytes)
+
         if password is not None:
             illegal, msg = Key.is_password_illegal(password)
             if illegal:
@@ -73,7 +77,7 @@ class Key:
             if password is not None:
                 self._key = decrypt_data(password, self._key)
 
-    def save(self, key_path, password: str = None):
+    def save(self, key_path, password: str = None, calc_md5: bool = True):
         self._update_last_access()
         self.path = key_path
 
@@ -92,7 +96,7 @@ class Key:
             # 使用密码加密key
             key_data = self._key
             if password is not None:
-                key_data = encrypt_data(password, self._key)
+                key_data = encrypt_data_with_head(password, self._key)
             mem_zipfile.writestr('key', key_data)
 
         buffer.seek(0, 0)
@@ -101,10 +105,35 @@ class Key:
         # 有密码的情况下使用空密码进行加密，作为标记
         if password is not None:
             blank_password = self.pad_key('')
-            output_bytes = encrypt_data(blank_password, output_bytes)
+            output_bytes = encrypt_data_with_head(blank_password, output_bytes)
+
+        self.md5 = hashlib.md5(output_bytes).digest()
 
         # 写入文件
         write_file(key_path, output_bytes)
+
+        if calc_md5:
+            self.save_md5()
+
+    def save_md5(self):
+        write_file(self.get_md5_file_path(), self.md5)
+
+    def get_md5_file_path(self):
+        md5_dir = get_md5_data_dir()
+        key_md5_file_path = os.join(md5_dir, self.id)
+        return key_md5_file_path
+
+    def is_key_modified(self):
+        md5: bytes = self._load_md5()
+        if md5 is None:
+            return None
+        return not (md5.hex() == self.md5.hex())
+
+    def _load_md5(self):
+        key_md5_file_path = self.get_md5_file_path()
+        if not os.path.exists(key_md5_file_path):
+            return None
+        return read_file(key_md5_file_path)
 
     def pad_key(self, password: str):
         if password is None:
