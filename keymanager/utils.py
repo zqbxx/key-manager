@@ -1,7 +1,9 @@
 from keymanager import _HEAD_MARKER_BYTE_SIZE
 import appdirs
 import os
-import zipfile
+
+
+ICON_COLOR = '#0099CC'
 
 
 def write_file(path: str, bs: bytes):

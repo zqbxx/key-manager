@@ -13,13 +13,13 @@ def generate_iv():
     return Random.new().read(AES.block_size)
 
 
-def encrypt_data_with_head(key, raw_data: bytes):
+def encrypt_data(key, raw_data: bytes):
     data_len = len(raw_data)
-    iv, enc_data = encrypt_data(key, raw_data)
+    iv, enc_data = encrypt_data1(key, raw_data)
     return _HEAD_MARKER + data_len.to_bytes(_HEAD_FILE_SIZE_BYTE_SIZE, byteorder='big') + iv + enc_data
 
 
-def encrypt_data(key, raw_data: bytes):
+def encrypt_data1(key, raw_data: bytes):
     iv = generate_iv()
     cipher = AES.new(key, AES.MODE_CBC, iv)
     enc_data = cipher.encrypt(pad(raw_data, AES.block_size, style='pkcs7'))
