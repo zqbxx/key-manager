@@ -1,6 +1,6 @@
 from Crypto.Cipher import AES
 from Crypto import Random
-from Crypto.Util.Padding import pad
+from Crypto.Util.Padding import pad, unpad
 
 from keymanager import _HEAD_MARKER, _HEAD_FILE_SIZE_BYTE_SIZE, _HEAD_LENGTH, _HEAD_MARKER_BYTE_SIZE
 
@@ -44,6 +44,8 @@ def decrypt_data(key, enc_data: bytes):
 def decrypt_data1(key, iv, length, enc_data: bytes):
     cipher = AES.new(key, AES.MODE_CBC, iv)
     raw_data = cipher.decrypt(enc_data)
+    if length == -1:
+        return unpad(raw_data, AES.block_size, style='pkcs7')
     return raw_data[:length]
 
 
@@ -52,3 +54,7 @@ def is_encrypt_data(enc_data: bytes):
     if marker_bytes.hex() == _HEAD_MARKER.hex():
         return True
     return False
+
+
+def not_encrypt_data(enc_data: bytes):
+    return not is_encrypt_data(enc_data)
