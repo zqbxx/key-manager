@@ -3,7 +3,10 @@ import appdirs
 import os
 
 
-ICON_COLOR = '#0099CC'
+ICON_COLOR = {
+    'color':  '#0099CC',
+    'active': '#0099CC',
+}
 
 
 def write_file(path: str, bs: bytes):
