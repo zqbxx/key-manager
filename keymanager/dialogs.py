@@ -6,6 +6,7 @@ from PySide2.QtCore import QPoint
 from PySide2.QtGui import Qt, QStandardItemModel, QIcon, QStandardItem, QCursor
 from PySide2.QtWidgets import QDialog, QFileDialog, QMessageBox, QAbstractItemView, QMenu, QInputDialog, QLineEdit, \
     QProgressDialog, QApplication
+from keymanager import iconic
 os.environ['QT_API'] = 'PySide2'
 import qtawesome as qta
 from keymanager.key import (
