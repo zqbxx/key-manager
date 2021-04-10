@@ -2,22 +2,12 @@ import os
 import sys
 from typing import Callable
 
-from PyQt5.QtWidgets import QApplication, QMenu
-
-from PyQt5.QtCore import Qt, QThread, QPoint
-from PyQt5.QtGui import QStandardItemModel, QStandardItem, QCursor, QIcon
-from PyQt5.QtWidgets import (
-    QDialog,
-    QProgressDialog,
-    QFileDialog,
-    QMessageBox,
-    QAbstractItemView,
-    QInputDialog,
-    QLineEdit,
-)
-
+from PySide2.QtCore import QPoint
+from PySide2.QtGui import Qt, QStandardItemModel, QIcon, QStandardItem, QCursor
+from PySide2.QtWidgets import QDialog, QFileDialog, QMessageBox, QAbstractItemView, QMenu, QInputDialog, QLineEdit, \
+    QProgressDialog, QApplication
+os.environ['QT_API'] = 'PySide2'
 import qtawesome as qta
-
 from keymanager.key import (
     Key,
     KEY_CACHE as key_cache,
@@ -203,7 +193,7 @@ class KeyMgrDialog(QDialog, UIKeyMgrDialog):
         _reload_key_action = pop_menu.addAction(qta.icon('fa.refresh', color=icon_color['color'], color_active=icon_color['active']), "重新加载")
         _reload_key_action.setEnabled(key.timeout)
 
-        selected_action = pop_menu.exec(QCursor.pos())
+        selected_action = pop_menu.exec_(QCursor.pos())
         if selected_action == _encrypt_files_action:
             self.encrypt_files_action()
         elif selected_action == _set_default_key_action:
