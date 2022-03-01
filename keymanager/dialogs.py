@@ -2,12 +2,13 @@ import os
 import sys
 from typing import Callable
 
-from PySide2.QtCore import QPoint
-from PySide2.QtGui import Qt, QStandardItemModel, QIcon, QStandardItem, QCursor
-from PySide2.QtWidgets import QDialog, QFileDialog, QMessageBox, QAbstractItemView, QMenu, QInputDialog, QLineEdit, \
+#from keymanager import iconic
+from PySide6.QtCore import QPoint
+from PySide6.QtGui import Qt, QStandardItemModel, QIcon, QStandardItem, QCursor
+from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox, QAbstractItemView, QMenu, QInputDialog, QLineEdit, \
     QProgressDialog, QApplication
-from keymanager import iconic
-os.environ['QT_API'] = 'PySide2'
+
+os.environ['QT_API'] = 'PySide6'
 import qtawesome as qta
 from keymanager.key import (
     Key,
