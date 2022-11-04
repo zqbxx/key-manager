@@ -5,7 +5,6 @@ import time
 import hashlib
 from io import BytesIO
 import threading
-from axel import Event
 
 from keymanager.encryptor import encrypt_data, pad_key, is_encrypt_data, decrypt_data
 from keymanager.utils import write_file, read_file, read_header, get_md5_data_dir
@@ -60,6 +59,9 @@ class Key:
         if bl > 32:
             return True, '密码太长'
         return False, ''
+
+    def touch(self):
+        return self.key
 
     @staticmethod
     def need_password(key_path):
@@ -187,30 +189,29 @@ class InvalidPasswordException(Exception):
 class KeyCache:
 
     def __init__(self):
-        self._cur_key_id = ''
         self._key_list: List[Key] = []
+        self._current_key:Key = None
 
     def set_current_key(self, key: Key):
-        self._cur_key_id = key.id
+        self._current_key = key
 
     def add_key(self, key: Key):
         self._key_list.append(key)
 
     def remove_key(self, idx):
-        if self._cur_key_id == self._key_list[idx]:
-            self._cur_key_id = ''
+        if self._current_key.id == self._key_list[idx]:
+            self._current_key = None
         del self._key_list[idx]
 
     def get_cur_key(self):
-        for key in self._key_list:
-            if key.id == self._cur_key_id:
-                if key.timeout:
-                    raise KeyTimeOutException()
-                return key
-        return None
+        return self._current_key
 
     def is_cur_key(self, key: Key):
-        return key.id == self._cur_key_id
+        if self._current_key is None:
+            return False
+        if key is None:
+            return False
+        return key.id == self._current_key.id
 
     def get_key_list(self):
         return self._key_list
@@ -220,6 +221,10 @@ def _check_key():
     while True:
         cache = KEY_CACHE
         key_list = cache.get_key_list()
+        current_key = cache.get_cur_key()
+        for cb in KEY_CHECKER['current_keystatus']:
+            cb(current_key)
+
         for key in key_list:
             last_tm = key.last_access
             now = time.time()
@@ -228,13 +233,15 @@ def _check_key():
                 continue
             if duration > KEY_CHECKER['timeout']:
                 key.timeout = True
-                KEY_CHECKER['invalidate'](key)
+                for cb in KEY_CHECKER['invalidate']:
+                    cb(key)
         time.sleep(1)
 
 
 KEY_CACHE = KeyCache()
 KEY_CHECKER = {
-    'invalidate': Event(),
+    'invalidate': list(),
+    'current_keystatus': list(),
     'thread': None,
     'timeout': 60 * 5
 }
@@ -247,5 +254,8 @@ def start_check_key_thread():
 
 
 def add_key_invalidate_callback(cb: Callable):
-    KEY_CHECKER['invalidate'] += cb
+    KEY_CHECKER['invalidate'].append(cb)
+
+def add_current_keystatus(cb: Callable):
+    KEY_CHECKER['current_keystatus'].append(cb)
 
