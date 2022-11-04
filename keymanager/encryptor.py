@@ -16,7 +16,12 @@ def generate_iv():
 def encrypt_data(key, raw_data: bytes):
     data_len = len(raw_data)
     iv, enc_data = encrypt_data1(key, raw_data)
-    return _HEAD_MARKER + data_len.to_bytes(_HEAD_FILE_SIZE_BYTE_SIZE, byteorder='big') + iv + enc_data
+    bytes_array = bytearray()
+    bytes_array.extend(_HEAD_MARKER)
+    bytes_array.extend(data_len.to_bytes(_HEAD_FILE_SIZE_BYTE_SIZE, byteorder='big'))
+    bytes_array.extend(iv)
+    bytes_array.extend(enc_data)
+    return bytes(bytes_array)
 
 
 def encrypt_data1(key, raw_data: bytes):
