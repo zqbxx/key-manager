@@ -20,7 +20,7 @@ from keymanager.ui._KeyCreateDialog import Ui_Dialog as UIKeyCreateDialog
 from keymanager.ui._KeyMgrDialog import Ui_Dialog as UIKeyMgrDialog
 from keymanager.ui._EncryptFileDialog import Ui_Dialog as UIEncryptFileDialog
 from keymanager.encryptor import is_encrypt_data, encrypt_data, decrypt_data, not_encrypt_data
-from keymanager.utils import read_file, write_file, ICON_COLOR as icon_color
+from keymanager.utils import read_file, write_file, ICON_COLOR as icon_color, getIcon
 
 
 class KeyCreateDialog(QDialog, UIKeyCreateDialog):
@@ -116,15 +116,18 @@ class KeyMgrDialog(QDialog, UIKeyMgrDialog):
 
         self.tbCreate.clicked.connect(self.create_key_action)
         self.tbCreate.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self.tbCreate.setIcon(qta.icon('ei.file-new', color=icon_color['color'], color_active=icon_color['active']))
+        #self.tbCreate.setIcon(qta.icon('ei.file-new', color=icon_color['color'], color_active=icon_color['active']))
+        self.tbCreate.setIcon(getIcon('create_key'))
 
         self.tbAdd.clicked.connect(self.add_key_action)
         self.tbAdd.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self.tbAdd.setIcon(qta.icon('fa.plus', color=icon_color['color'], color_active=icon_color['active']))
+        #self.tbAdd.setIcon(qta.icon('fa.plus', color=icon_color['color'], color_active=icon_color['active']))
+        self.tbAdd.setIcon(getIcon('add_key'))
 
         self.tbRemove.clicked.connect(self.remove_key_action)
         self.tbRemove.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self.tbRemove.setIcon(qta.icon('fa.minus', color=icon_color['color'], color_active=icon_color['active']))
+        #self.tbRemove.setIcon(qta.icon('fa.minus', color=icon_color['color'], color_active=icon_color['active']))
+        self.tbRemove.setIcon(getIcon('remove_key'))
 
         add_key_invalidate_callback(self.key_invalidate)
 
@@ -500,6 +503,43 @@ def open_encrypt_files_dialog(key: Key,
         QMessageBox.critical(pd, '处理失败', str(e))
 
     pd.close()
+
+
+def show_add_key_dialog(parent) -> Key:
+    file_name, _ = QFileDialog.getOpenFileName(parent, '选择密钥文件')
+
+    if len(file_name.strip()) == 0:
+        return None
+
+    password = None
+    if Key.need_password(file_name):
+        ok_pressed = True
+        while ok_pressed:
+            password, ok_pressed = QInputDialog.getText(parent, "需要密码", "输入密码：", QLineEdit.Password, "")
+            if ok_pressed:
+                illegal, msg = Key.is_password_illegal(password)
+                if illegal:
+                    QMessageBox.information(parent, '错误', msg)
+                    continue
+                break
+            else:
+                return None
+
+    key = Key()
+    try:
+        key.load(file_name, password)
+    except Exception as e:
+        QMessageBox.critical(parent, '错误', '不是有效的密钥文件<br/>' + str(e))
+        return None
+
+    for k in key_cache.get_key_list():
+        if k.id == key.id:
+            QMessageBox.information(parent, '信息', '相同的密钥已经加载')
+            return None
+
+    key_cache.add_key(key)
+
+    return key
 
 
 if __name__ == '__main__':

@@ -9,11 +9,11 @@ def pad_key(key, key_length=32):
     return pad(key, key_length, style='pkcs7')
 
 
-def generate_iv():
+def generate_iv() -> bytes:
     return Random.new().read(AES.block_size)
 
 
-def encrypt_data(key, raw_data: bytes):
+def encrypt_data(key, raw_data: bytes) -> bytes:
     data_len = len(raw_data)
     iv, enc_data = encrypt_data1(key, raw_data)
     bytes_array = bytearray()
@@ -31,7 +31,7 @@ def encrypt_data1(key, raw_data: bytes):
     return iv, enc_data
 
 
-def decrypt_data(key, enc_data: bytes):
+def decrypt_data(key, enc_data: bytes) -> bytes:
 
     if not is_encrypt_data(enc_data):
         return b''

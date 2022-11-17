@@ -1,4 +1,4 @@
-from typing import List, Callable
+from typing import List, Callable, TypeVar
 import zipfile
 import os
 import time
@@ -6,8 +6,12 @@ import hashlib
 from io import BytesIO
 import threading
 
+from axel import Event
+
 from keymanager.encryptor import encrypt_data, pad_key, is_encrypt_data, decrypt_data
 from keymanager.utils import write_file, read_file, read_header, get_md5_data_dir
+
+_Key = TypeVar("KeyType", bound="Key")
 
 
 class Key:
@@ -21,6 +25,17 @@ class Key:
         self._update_last_access()
 
         self._timeout = False
+
+    def copy(self) -> _Key:
+        key = Key()
+        key.id = self.id
+        key.name = self.name
+        key._key = self._key
+        key.path = self.path
+        key.md5 = self.md5
+        key._update_last_access()
+        key._timeout = False
+        return key
 
     def _update_last_access(self):
         self.last_access = time.time()
@@ -192,16 +207,36 @@ class KeyCache:
         self._key_list: List[Key] = []
         self._current_key:Key = None
 
+        self.current_key_changed = Event()
+        self.key_added = Event()
+        self.key_removed = Event()
+
+    def add_current_key_changed_callback(self, cb: Callable[[Key, Key], None]):
+        self.current_key_changed += cb
+
+    def add_key_added_callback(self, cb: Callable[[Key],None]):
+        self.key_added += cb
+
+    def add_key_removed_callback(self, cb: Callable[[Key], None]):
+        self.key_removed += cb
+
     def set_current_key(self, key: Key):
+        if key == self._current_key:
+            return
+        old_key = self._current_key
         self._current_key = key
+        self.current_key_changed(old_key, key)
 
     def add_key(self, key: Key):
         self._key_list.append(key)
+        self.key_added(key)
 
     def remove_key(self, idx):
         if self._current_key.id == self._key_list[idx]:
             self._current_key = None
+        removed_key = self._key_list[idx]
         del self._key_list[idx]
+        self.key_removed(removed_key)
 
     def get_cur_key(self):
         return self._current_key
@@ -222,8 +257,11 @@ def _check_key():
         cache = KEY_CACHE
         key_list = cache.get_key_list()
         current_key = cache.get_cur_key()
-        for cb in KEY_CHECKER['current_keystatus']:
-            cb(current_key)
+
+        try:
+            KEY_CHECKER['current_keystatus'](current_key)
+        finally:
+            pass
 
         for key in key_list:
             last_tm = key.last_access
@@ -232,19 +270,24 @@ def _check_key():
             if key.timeout:
                 continue
             if duration > KEY_CHECKER['timeout']:
-                key.timeout = True
-                for cb in KEY_CHECKER['invalidate']:
-                    cb(key)
+                try:
+                    KEY_CHECKER['invalidate'](key)
+                finally:
+                    key.timeout = True
         time.sleep(1)
 
 
 KEY_CACHE = KeyCache()
 KEY_CHECKER = {
-    'invalidate': list(),
-    'current_keystatus': list(),
+    'invalidate': Event(threads=0),
+    'current_keystatus': Event(threads=0),
     'thread': None,
     'timeout': 60 * 5
 }
+
+
+def set_key_timeout(timeout: int):
+    KEY_CHECKER['timeout'] = timeout
 
 
 def start_check_key_thread():
@@ -253,9 +296,10 @@ def start_check_key_thread():
         _CHECK_KEY_THREAD.start()
 
 
-def add_key_invalidate_callback(cb: Callable):
-    KEY_CHECKER['invalidate'].append(cb)
+def add_key_invalidate_callback(cb: Callable[[Key], None]):
+    KEY_CHECKER['invalidate'] += cb
 
-def add_current_keystatus(cb: Callable):
-    KEY_CHECKER['current_keystatus'].append(cb)
+
+def add_current_keystatus_callback(cb: Callable[[Key], None]):
+    KEY_CHECKER['current_keystatus'] += cb
 
